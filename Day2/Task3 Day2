@@ -1,0 +1,76 @@
+import scala.util.control.Breaks.{break, breakable}
+import scala.collection.mutable.ArrayBuffer
+import scala.io.StdIn
+
+
+case class Worker(number: Int, name: String, location: String)
+
+class Division(val unitName: String, val staff: ArrayBuffer[Worker], val subUnits: ArrayBuffer[Division])
+{
+  def recruitStaff(worker: Worker, divisionName: String): Boolean = {
+    if (unitName == divisionName) {
+      staff += worker
+      true
+    } else {
+      subUnits.exists(_.recruitStaff(worker, divisionName))
+    }
+  }
+
+  def displayHierarchy(indent: String = ""): Unit =
+{
+    println(s"$indent$unitName")
+    staff.foreach(w => println(s"$indent  (${w.number}, ${w.name}, ${w.location})"))
+    subUnits.foreach(_.displayHierarchy(indent + "  "))
+  }
+
+  override def toString: String = s"Division(unitName=$unitName, staff=${staff.mkString(", ")}, subUnits=${subUnits.mkString(", ")})"
+}
+
+@main def tree_struct = 
+{
+  val paymentDivision = new Division("Payments", ArrayBuffer[Worker](), ArrayBuffer[Division]())
+  val financeDivision = new Division("Finance", ArrayBuffer[Worker](), ArrayBuffer[Division](paymentDivision))
+
+  val marketingDivision = new Division("Marketing", ArrayBuffer[Worker](), ArrayBuffer[Division]())
+  val adsDivision = new Division("Advertisements", ArrayBuffer[Worker](), ArrayBuffer[Division]())
+  val salesMgmtDivision = new Division("SalesManagement", ArrayBuffer[Worker](), ArrayBuffer[Division]())
+
+  val salesDivision = new Division("Sales", ArrayBuffer[Worker](), ArrayBuffer[Division](marketingDivision, adsDivision, salesMgmtDivision))
+
+  val orgDivision = new Division("Organization", ArrayBuffer[Worker](), ArrayBuffer[Division](financeDivision, salesDivision))
+
+  breakable {
+    while (true) {
+      println("Enter number, name, location, division (or type 'exit' to quit):")
+      val line = StdIn.readLine().trim
+
+      if (line == "exit") break()
+
+      val parts = line.split(",").map(_.trim)
+      if (parts.length != 4) {
+        println("Invalid input. Please enter number, name, location, and division separated by commas.")
+      } else {
+        try {
+          val number = parts(0).toInt
+          val name = parts(1)
+          val location = parts(2)
+          val divisionName = parts(3)
+
+          val worker = Worker(number, name, location)
+          val added = orgDivision.recruitStaff(worker, divisionName)
+          if (!added) {
+            println(s"Division '$divisionName' not found.")
+          } else {
+            println(s"Added worker $worker to division $divisionName.")
+          }
+        } catch {
+          case _: NumberFormatException => println("Invalid number. It should be an integer.")
+        }
+      }
+
+      // Print the organization hierarchy after each addition
+      println("Organization Hierarchy:")
+      orgDivision.displayHierarchy()
+    }
+  }
+}
