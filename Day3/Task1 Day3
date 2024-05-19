@@ -1,0 +1,42 @@
+
+import scala.io.Source
+object reader extends App {
+  val filename = "/Users/manishawasthi/IdeaProjects/untitled2/src/main/scala/data.csv"
+  val source = Source.fromFile(filename)
+  val lines = source.getLines().toList
+  case class Employee(sno: Int, name: String, city: String, salary: Int, department: String)
+  val employees_list:List[Employee]=lines.tail.map(line=> {
+    val arr:Employee= {
+      val unformatted: Array[String] = line.split(",")
+      val sno = unformatted(0).toInt
+      val name = unformatted(1)
+      val city = unformatted(2)
+      val salary = unformatted(3).toInt
+      val department = unformatted(4)
+      val row=Employee(sno, name, city, salary, department)
+      row
+    }
+    arr
+  })
+  val high_salaried:List[Employee]=employees_list.filter(_.salary>58000)
+  println("high salaried : ")
+  println(high_salaried)
+  println()
+  val engineering_department_employees:List[Employee]=employees_list.filter(_.department=="Engineering")
+  println("Engineering Department Employees : ")
+  println(engineering_department_employees)
+  println()
+  val formatted_employees_list:List[String]=employees_list.map(employee=>s"${employee.name.padTo(18,' ')}   ${employee.salary.toString.padTo(10,' ')}  ${employee.department.padTo(20,' ')}")
+  formatted_employees_list.foreach(println)
+  val departmentWiseSalary = employees_list.groupBy(_.department).view.mapValues { empList =>
+    val totalSalary = empList.map(_.salary).sum
+    val averageSalary = totalSalary.toDouble / empList.length
+    val employeeCount = empList.length
+    (totalSalary, averageSalary,employeeCount)
+  }
+
+  println("Total and Average Salary of Each Department:")
+  departmentWiseSalary.foreach { case (department, (totalSalary, averageSalary,employeeCount)) =>
+    println(s"$department: Total Salary - ${totalSalary}, Average Salary - ${averageSalary},Employee Count - ${employeeCount}")
+  }
+}
