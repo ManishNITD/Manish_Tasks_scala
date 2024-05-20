@@ -1,0 +1,127 @@
+
+import java.sql.{Connection, DriverManager, ResultSet, Statement}
+import scala.io.Source
+
+object runner extends App{
+  val filename = "/Users/manishawasthi/IdeaProjects/untitled2/src/main/scala/data.csv"
+  val source = Source.fromFile(filename)
+  val lines = source.getLines().toList
+  case class Employee(sno: Int, name: String, city: String, salary: Int, department: String)
+
+  val employees_list: List[Employee] = lines.tail.map(line => {
+    val arr: Employee = {
+      val unformatted: Array[String] = line.split(",")
+      val sno = unformatted(0).toInt
+      val name = unformatted(1)
+      val city = unformatted(2)
+      val salary = unformatted(3).toInt
+      val department = unformatted(4)
+      val row = Employee(sno, name, city, salary, department)
+      row
+    }
+    arr
+  })
+  def database_connect(employee_list:List[Employee])={
+    Class.forName("com.mysql.cj.jdbc.Driver")
+    // Establish a connection
+    val url = "jdbc:mysql://hadoop-server.mysql.database.azure.com:3306/manish"
+    val username = "sqladmin"
+    val password = "Password@12345"
+    val connection: Connection = DriverManager.getConnection(url, username, password)
+
+    try {
+      // Create a statement
+      val statement: Statement = connection.createStatement()
+
+      // Create a table
+
+      val department=employee_list.map(_.department).distinct
+
+      val createdepartmenttableSQL =
+        """
+          |CREATE TABLE IF NOT EXISTS department (
+          |id INT AUTO_INCREMENT PRIMARY KEY,
+          |  department VARCHAR(100),
+          |INDEX(department)
+          |)
+          |""".stripMargin
+
+      statement.execute(createdepartmenttableSQL)
+      println("Table department created successfully.")
+
+      val createemployeetableSQL =
+        """
+          |CREATE TABLE IF NOT EXISTS employee (
+          |  sno INT ,
+          |  name VARCHAR(100),
+          |  city VARCHAR(100),
+          |  salary INT,
+          |  department VARCHAR(100),
+          | FOREIGN KEY (department) REFERENCES department(department)
+          |)
+          |""".stripMargin
+
+      statement.execute(createemployeetableSQL)
+      println("Table employee created successfully.")
+
+      var count_emp = 0
+      department.foreach(depart => {
+        val insertSQL1 = s"INSERT INTO department (department)VALUES ('$depart')"
+        statement.executeUpdate(insertSQL1)
+        count_emp = count_emp + 1
+      })
+
+      count_emp=0
+      employees_list.filter(employee=>department.contains(employee.department)).foreach(employee=>{
+        val insertSQL =s"INSERT INTO employee (sno, name, city, salary, department)VALUES (${employee.sno},'${employee.name}','${employee.city}',${employee.salary},'${employee.department}')"
+        statement.executeUpdate(insertSQL)
+        count_emp=count_emp+1
+      })
+      println(s"$count_emp inserted successfully in employee table.")
+
+      println(s"$count_emp inserted successfully in department table.")
+      val query = "SELECT * FROM employee"
+      val resultSet: ResultSet = statement.executeQuery(query)
+      var employee_read_list:List[Employee]=List()
+      while (resultSet.next()) {
+        val employee_read: Employee = {
+          val sno = resultSet.getInt("sno")
+          val name = resultSet.getString("name")
+          val city = resultSet.getString("city")
+          val salary = resultSet.getInt("salary")
+          val department = resultSet.getString("department")
+          val row = Employee(sno, name, city, salary, department)
+          row
+        }
+        employee_read_list = employee_read_list:+ employee_read
+      }
+      val query2 = "SELECT * FROM department"
+      val resultSet2: ResultSet = statement.executeQuery(query2)
+      var department_read_list: List[String] = List()
+      while (resultSet2.next()) {
+        department_read_list=department_read_list:+resultSet2.getString("department")
+      }
+      (employee_read_list,department_read_list)
+    }
+    catch {
+      case e: Exception => e.printStackTrace()
+    } finally {
+      // Close Statement and Connection
+      connection.close()
+    }
+  }
+  val (emp_result,dept_result)=database_connect(employees_list)
+
+  def print_tree(employee_list:List[Employee],depart:List[String])={
+    for(department <- depart){
+      println(department)
+      var departmental_employees=employee_list.filter(_.department==department)
+      for(employee <- departmental_employees){
+        println(s"\t|_${employee.name}")
+      }
+    }
+
+  }
+  print_tree(emp_result,dept_result)
+
+}
