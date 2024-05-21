@@ -1,0 +1,109 @@
+import java.sql.{Connection, DriverManager, ResultSet, Statement}
+import scala.io.Source
+import java.util.concurrent._
+
+object Runner extends App {
+  val pool: ExecutorService = Executors.newFixedThreadPool(8)
+
+  // Define the case class for Employee
+  case class Employee(sno: Int, name: String, city: String, salary: Int, department: String, threadname: String, curtime: String)
+
+  // Function to process a chunk of lines
+  def processChunk(chunk: List[String]): Unit = {
+    // Process each line in the chunk and create the Employee objects
+    val employees_list: List[Employee] = chunk.tail.map(line => {
+      val unformatted: Array[String] = line.split(",")
+      val sno = unformatted(0).toInt
+      val name = unformatted(1)
+      val city = unformatted(2)
+      val salary = unformatted(3).toInt
+      val department = unformatted(4)
+      val threadname = Thread.currentThread().getName
+      val currentTimeMillis = System.currentTimeMillis().toString
+      Employee(sno, name, city, salary, department, threadname, currentTimeMillis)
+    })
+
+    // Database connection and processing code
+    databaseConnect(employees_list)
+  }
+
+  // Function to connect to the database and perform operations
+  def databaseConnect(employeeList: List[Employee]): Unit = {
+    Class.forName("com.mysql.cj.jdbc.Driver")
+    val url = "jdbc:mysql://hadoop-server.mysql.database.azure.com:3306/manish"
+    val username = "sqladmin"
+    val password = "Password@12345"
+    val connection: Connection = DriverManager.getConnection(url, username, password)
+
+    try {
+      val statement: Statement = connection.createStatement()
+
+      val department = employeeList.map(_.department).distinct
+
+      // Create department table if not exists
+      val createDepartmentTableSQL =
+        """
+          |CREATE TABLE IF NOT EXISTS department (
+          |id INT AUTO_INCREMENT PRIMARY KEY,
+          |department VARCHAR(100),
+          |INDEX(department)
+          |)
+          |""".stripMargin
+      statement.execute(createDepartmentTableSQL)
+
+      // Create employee table if not exists
+      val createEmployeeTableSQL =
+        """
+          |CREATE TABLE IF NOT EXISTS employee (
+          |sno INT,
+          |name VARCHAR(100),
+          |city VARCHAR(100),
+          |salary INT,
+          |department VARCHAR(100),
+          |threadname VARCHAR(200),
+          |time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          |FOREIGN KEY (department) REFERENCES department(department)
+          |)
+          |""".stripMargin
+      statement.execute(createEmployeeTableSQL)
+
+      // Insert departments
+      department.foreach(depart => {
+        val insertDepartmentSQL = s"INSERT INTO department (department) VALUES ('$depart')"
+        statement.executeUpdate(insertDepartmentSQL)
+      })
+
+      // Insert employees
+      employeeList.foreach(employee => {
+        val insertEmployeeSQL = s"INSERT INTO employee (sno, name, city, salary, department, threadname) VALUES " +
+          s"(${employee.sno}, '${employee.name}', '${employee.city}', ${employee.salary}, '${employee.department}', '${employee.threadname}')"
+        statement.executeUpdate(insertEmployeeSQL)
+      })
+
+      println("Data inserted successfully.")
+    } catch {
+      case e: Exception => e.printStackTrace()
+    } finally {
+      connection.close()
+    }
+  }
+
+  // Read the CSV file and split into chunks for processing
+  val filename = "/Users/manishawasthi/IdeaProjects/untitled2/src/main/scala/data.csv"
+  val source = Source.fromFile(filename)
+  val lines = source.getLines().toList
+  val chunkSize = lines.size / 8 // Divide the lines into approximately equal chunks for 4 threads
+  val chunks = lines.grouped(chunkSize).toList
+
+  // Submit tasks to the thread pool for processing
+  chunks.foreach(chunk => {
+    pool.submit(new Runnable {
+      def run(): Unit = {
+        processChunk(chunk)
+      }
+    })
+  })
+
+  // Shutdown the thread pool after all tasks are completed
+  pool.shutdown()
+}
