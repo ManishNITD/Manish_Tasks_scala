@@ -1,0 +1,3 @@
+DB_URL=jdbc:mysql://hadoop-server.mysql.database.azure.com:3306/manish
+USER=sqladmin
+PASSWORD=Password@12345
