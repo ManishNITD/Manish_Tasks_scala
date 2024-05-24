@@ -1,0 +1,42 @@
+import scala.io.Source
+import scala.collection.mutable._
+
+case class ConfidentialStaff(id: Int, fullName: String, location: String, income: Double, department: String)
+case class SecureDepartmentTask(departmentName: String)
+
+def secretTrack(sensitivePeopleList : ArrayBuffer[String] , sensitiveInfoList: List[String], start: Int, n: Int) : Unit = {
+  if(sensitivePeopleList.length == 4) {
+    println(sensitivePeopleList.mkString(" "))
+    return
+  }
+
+  for( i<- start until n){
+    sensitivePeopleList += sensitiveInfoList(i)
+    secretTrack(sensitivePeopleList, sensitiveInfoList, i+1, n)
+    sensitivePeopleList.remove(sensitivePeopleList.length - 1)
+  }
+}
+
+object runner extends App {
+  val secretDataPath = "/Users/manishawasthi/IdeaProjects/untitled2/src/main/scala/data.csv"
+  val fileStream = Source.fromFile(secretDataPath)
+  var sensitiveInfoList: List[String] = List()
+
+  var lineCounter: Int = 0
+  for (line <- fileStream.getLines()) {
+    if (lineCounter > 0) {
+      val Array(id, name, location, salary, dept) = line.split(",").map(_.trim)
+      if(dept == "Sales")
+        sensitiveInfoList = sensitiveInfoList :+ s"$name,"
+    }
+    lineCounter += 1
+  }
+  println(sensitiveInfoList.mkString(" "))
+  val sensitivePeopleList : ArrayBuffer[String] = ArrayBuffer()
+
+  secretTrack(sensitivePeopleList, sensitiveInfoList, 0, sensitiveInfoList.length)
+
+}
+
+
+
