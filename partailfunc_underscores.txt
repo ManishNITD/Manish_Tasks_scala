@@ -1,0 +1,36 @@
+1.Partially Applied Functions
+
+A partially applied function is a function where you provide only some of the arguments initially, creating a new function that takes the remaining arguments.
+
+def multiply(a: Int, b: Int, c: Int): Int = a * b * c
+val multiplyByTwo = multiply(2, _: Int, _: Int)
+println(multiplyByTwo(3, 4)) // Output: 24
+
+2.Partial Functions
+
+val squareRoot: PartialFunction[Double, Double] = {
+  case x if x >= 0 => Math.sqrt(x)
+}
+println(squareRoot.isDefinedAt(4))  // Output: true
+println(squareRoot(4))              // Output: 2.0
+println(squareRoot.isDefinedAt(-1)) // Output: false
+
+
+3.Implicit conversions allow automatic type conversions. Implicit parameters can provide default values and make code more concise.
+
+def greet(name: String)(implicit greeting: String): Unit = {
+  println(s"$greeting, $name")
+}
+implicit val defaultGreeting: String = "Hello"
+greet("Alice") // Output: Hello, Alice
+
+4. Underscore Syntax in Collection Operations
+
+val numbers = List(1, 2, 3, 4, 5)
+val sum = numbers.reduce(_ + _)
+println(sum) // Output: 15
+
+
+
+
+
