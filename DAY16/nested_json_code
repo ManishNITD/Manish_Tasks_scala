@@ -1,0 +1,29 @@
+import org.apache.spark.sql.{SaveMode, SparkSession}
+import org.apache.spark.sql.functions._
+
+object nested_json extends App{
+  val spark=SparkSession.builder().master("local[*]").appName("nested_json").getOrCreate()
+  val employee_df=spark
+    .read
+    .format("jdbc")
+    .option("url", "jdbc:mysql://35.xxx.xx.xx:3306/manish")
+    .option("dbtable", "employees")
+    .option("user", "root")
+    .option("password", "Password@12345")
+    .load()
+
+  val department_df=spark
+    .read
+    .format("jdbc")
+    .option("url", "jdbc:mysql://35.xxx.xx.79:3306/manish")
+    .option("dbtable", "department")
+    .option("user", "root")
+    .option("password", "Password@12345")
+    .load()
+
+  val joined_df=department_df.join(employee_df,department_df("id")===employee_df("dept_id"),"inner")
+  val output_df=joined_df.groupBy(department_df("id"),department_df("name")).agg(collect_list(employee_df("name")).as("employee name"))
+  output_df.show()
+
+  output_df.write.mode("overwrite").format("json").save("/Users/manishawasthi/Documents/spark_json/dept_employee.json")
+}
