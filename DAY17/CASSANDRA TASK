@@ -1,0 +1,63 @@
+import org.apache.spark.sql.SparkSession
+
+object WriteToKeyspaces extends App {
+
+  val spark = SparkSession.builder
+    .appName("Secure AWS Keyspaces Connection")
+    .master("local[*]")
+    .config("spark.cassandra.connection.host","cassandra.us-west-2.amazonaws.com")
+    .config("spark.cassandra.connection.port", "9142")
+    .config("spark.cassandra.connection.ssl.enabled", "true")
+    .config("spark.cassandra.auth.username", "xx")
+    .config("spark.cassandra.auth.password", "xxxx")
+    .config("spark.cassandra.input.consistency.level", "LOCAL_QUORUM")
+    .config("spark.cassandra.connection.ssl.trustStore.path", "/Users/manishawasthi/cassandra_truststore.jks")
+    .config("spark.cassandra.connection.ssl.trustStore.password", "xx")
+    .getOrCreate()
+
+
+  val products_df=spark
+    .read
+    .format("jdbc")
+    .option("url", "jdbc:mysql://xx/manish")
+    .option("dbtable", "Products")
+    .option("user", "root")
+    .option("password", "Password@12345")
+    .load()
+    .withColumnRenamed("Name", "product_name")
+
+  val sales_df=spark
+    .read
+    .format("jdbc")
+    .option("url", "jdbc:mysql://xx/manish")
+    .option("dbtable", "Sales")
+    .option("user", "root")
+    .option("password", "Password@12345")
+    .load()
+
+  val customers_df=spark
+    .read
+    .format("jdbc")
+    .option("url", "jdbc:mysql://xx/manish")
+    .option("dbtable", "Customers")
+    .option("user", "root")
+    .option("password", "Password@12345")
+    .load()
+    .withColumnRenamed("Name", "customer_name")
+
+val merged_df=products_df
+  .join(sales_df,"product_id")
+  .join(customers_df,"customer_id")
+  .withColumn("salesamount",products_df("price")*sales_df("units"))
+
+  val col_to_drop=merged_df.columns.diff(Array("transaction_id","product_id","product_name","customer_name","salesamount"))
+  val final_df=merged_df.drop(col_to_drop: _*)
+
+  final_df.write
+    .format("org.apache.spark.sql.cassandra")
+    .options(Map("table" -> "salescfamily", "keyspace" -> "tutorialkeyspace"))
+    .mode("append")
+    .save()
+
+  spark.stop()
+}
