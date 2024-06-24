@@ -1,0 +1,184 @@
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.expressions.Window
+import org.apache.spark.sql.functions._
+object SparkPractice {
+  def main(args: Array[String]) {
+    val spark = SparkSession.builder().master("local[*]").appName("exampleApp").getOrCreate()
+    val filePath = "/Users/aniketsharma/Downloads/Sales.csv"
+    val salesDF = spark
+      .read
+      .option("header", "true")
+      .option("inferSchema", "true")
+      .format("csv")
+      .load(filePath)
+    salesDF.show()
+    salesDF.printSchema()
+    salesDF.describe().show()
+    salesDF.select("transaction_id", "customer_id").show()
+    // Adding a new column with a constant value
+    val salesWithConstCol = salesDF.withColumn("fixed_column", lit(200))
+    salesWithConstCol
+      .withColumnRenamed("fixed_column", "constantColumn")
+      .show()
+    salesWithConstCol
+      .drop("constantColumn")
+      .show()
+    salesDF.filter(col("transaction_id") > 5).show()
+    salesDF.sort(col("units").desc).show()
+    salesDF.orderBy(col("units").asc).show()
+    salesDF.groupBy(col("product_id")).count().show()
+    import spark.implicits._
+    // Sample DataFrames
+    val dfA = Seq((1, "Alice"), (2, "Bob")).toDF("id", "name")
+    val dfB = Seq((1, "NY"), (2, "LA")).toDF("id", "city")
+    // Join Operations
+    val innerJoinDF = dfA.join(dfB, dfA("id") === dfB("id"))
+    innerJoinDF.show()
+    val fullOuterJoinDF = dfA.join(dfB, Seq("id"), "outer")
+    fullOuterJoinDF.show()
+    // Set Operations
+    val unionDF = dfA.union(dfB)
+    unionDF.show()
+    val intersectionDF = dfA.intersect(dfB)
+    intersectionDF.show()
+    val exceptDF = dfA.except(dfB)
+    exceptDF.show()
+    // Miscellaneous Operations
+    val dfC = Seq((1, Array("a", "b", "c"))).toDF("id", "arrayCol")
+    val explodedDF = dfC.withColumn("explodedCol", explode($"arrayCol"))
+    explodedDF.show()
+    // Dummy value column for the pivot example
+    val dfD = Seq((1, "a", 1), (1, "b", 2), (1, "c", 3)).toDF("id", "arrayCol", "valueCol")
+    val pivotDF = dfD.groupBy("id").pivot("arrayCol").agg(sum("valueCol"))
+    pivotDF.show()
+    // Window Functions
+    val windowSpec = Window.partitionBy("id").orderBy("id")
+    val cumSumDF = dfC.withColumn("cumSum", sum("id").over(windowSpec))
+    cumSumDF.show()
+    // Input/Output
+    dfC.write.format("json").save("path/to/json_output")
+    // Dataset Operations
+    val dataSeq = Seq(1, 2, 3, 4, 5)
+    val ds = spark.createDataset(dataSeq)
+    val jsonDS = spark.read.json("path/to/json_output")
+    val mappedDS = ds.map(_ * 2)
+    val flatMappedDS = ds.flatMap(x => Seq(x, x * 2))
+    val filteredDS = ds.filter(_ > 2)
+    val distinctDS = ds.distinct()
+    val sampledDS = ds.sample(false, 0.5)
+    val unionDS = ds.union(ds)
+    val joinedDS = ds.join(ds, ds("value") === ds("value"))
+    val groupedDS = ds.groupBy("value")
+    // Dataset Actions
+    val collectedSeq = ds.collect()
+    val dsCount = ds.count()
+    val firstElem = ds.first()
+    val firstNElems = ds.take(5)
+    ds.show()
+    // Dataset Persistence
+    ds.cache()
+    ds.persist(org.apache.spark.storage.StorageLevel.MEMORY_AND_DISK)
+    // Dataset Partitioning
+    val repartitionedDS = ds.repartition(10)
+    val coalescedDS = ds.coalesce(1)
+    // File Output
+    ds.write.format("parquet").save("path/to/parquet_output")
+    // Sample DataFrames
+    val dfX = Seq((1, "Alice"), (2, "Bob")).toDF("id", "name")
+    val dfY = Seq((1, "NY"), (2, "LA")).toDF("id", "city")
+    // DataFrame Join Operations
+    val joinedDFX = dfX.join(dfY, dfX("id") === dfY("id"))
+    val outerJoinedDFX = dfX.join(dfY, Seq("id"), "outer")
+    // DataFrame Set Operations
+    val unionDFX = dfX.union(dfY)
+    val intersectDFX = dfX.intersect(dfY)
+    val exceptDFX = dfX.except(dfY)
+    // DataFrame Miscellaneous Operations
+    val dfZ = Seq((1, Array("a", "b", "c"))).toDF("id", "arrayCol")
+    val explodedDFX = dfZ.withColumn("explodedCol", explode($"arrayCol"))
+    val dfW = Seq((1, "a", 1), (1, "b", 2), (1, "c", 3)).toDF("id", "arrayCol", "valueCol")
+    val pivotDFX = dfW.groupBy("id").pivot("arrayCol").agg(sum("valueCol"))
+    // DataFrame Window Functions
+    val windowSpecX = Window.partitionBy("id").orderBy("id")
+    val cumSumDFX = dfZ.withColumn("cumSum", sum("id").over(windowSpecX))
+    // DataFrame Input/Output
+    dfZ.write.format("json").save("path/to/json_output1")
+    // Dataset Operations
+    val dataSeqX = Seq(1, 2, 3, 4, 5)
+    val dsX = spark.createDataset(dataSeqX)
+    val jsonDSX = spark.read.json("path/to/json_output1")
+    val mappedDSX = dsX.map(_ * 2)
+    val flatMappedDSX = dsX.flatMap(x => Seq(x, x * 2))
+    val filteredDSX = dsX.filter(_ > 2)
+    val distinctDSX = dsX.distinct()
+    val sampledDSX = dsX.sample(false, 0.5)
+    val unionDSX = dsX.union(dsX)
+    val joinedDSX = dsX.join(dsX, dsX("value") === dsX("value"))
+    val groupedDSX = dsX.groupBy("value")
+    // Dataset Actions
+    val collectedSeqX = dsX.collect()
+    val dsCountX = dsX.count()
+    val firstElemX = dsX.first()
+    val firstNElemsX = dsX.take(5)
+    dsX.show()
+    // Dataset Persistence
+    dsX.cache()
+    dsX.persist(org.apache.spark.storage.StorageLevel.MEMORY_AND_DISK)
+    // Dataset Partitioning
+    val repartitionedDSX = dsX.repartition(10)
+    val coalescedDSX = dsX.coalesce(1)
+    // Dataset File Output
+    dsX.write.format("parquet").save("path/to/parquet_output1")
+    // Sample RDD
+    val sc = spark.sparkContext
+    val rddA = sc.parallelize(Seq((1, "Alice"), (2, "Bob")))
+    val rddB = sc.parallelize(Seq((1, "NY"), (2, "LA")))
+    // RDD Transformations
+    val mappedRDD = rddA.map(x => (x._1, x._2.toUpperCase))
+    val flatMappedRDD = rddA.flatMap(x => List(x, (x._1, x._2.toLowerCase)))
+    val filteredRDD = rddA.filter(_._1 > 1)
+    val distinctRDD = rddA.distinct()
+    val sampledRDD = rddA.sample(false, 0.5)
+    val unionRDD = rddA.union(rddB)
+    val intersectionRDD = rddA.intersection(rddB)
+    val subtractedRDD = rddA.subtract(rddB)
+    val cartesianRDD = rddA.cartesian(rddB)
+    // RDD Actions
+    val collectedRDD = rddA.collect()
+    val countRDD = rddA.count()
+    val firstRDD = rddA.first()
+    val takeRDD = rddA.take(5)
+    val reducedRDD = rddA.reduce((x, y) => (x._1 + y._1, x._2 + y._2))
+    val foldedRDD = rddA.fold((0, ""))((acc, x) => (acc._1 + x._1, acc._2 + x._2))
+    val aggregatedRDD = rddA.aggregate((0, ""))((acc, x) => (acc._1 + x._1, acc._2 + x._2), (acc1, acc2) => (acc1._1 + acc2._1, acc1._2 + acc2._2))
+    rddA.foreach(println)
+    // RDD Persistence
+    rddA.cache()
+    rddA.persist(org.apache.spark.storage.StorageLevel.MEMORY_AND_DISK)
+    // RDD Partitioning
+    val repartitionedRDD = rddA.repartition(10)
+    val coalescedRDD = rddA.coalesce(1)
+    // Key-Value Pair RDD Operations
+    val pairRDD = rddA.map(x => (x._1, x._2))
+    val reducedByKeyRDD = pairRDD.reduceByKey(_ + _)
+    val groupedByKeyRDD = pairRDD.groupByKey()
+    val joinedPairRDD = pairRDD.join(pairRDD)
+    val leftOuterJoinRDD = pairRDD.leftOuterJoin(pairRDD)
+    val rightOuterJoinRDD = pairRDD.rightOuterJoin(pairRDD)
+    val cogroupedRDD = pairRDD.cogroup(pairRDD)
+    // Additional RDD Operations
+    val subtractedRDD2 = rddA.subtract(rddB)
+    val checkpointedRDD = {
+      sc.setCheckpointDir("path/to/checkpointDir")
+      rddA.checkpoint()
+    }
+    // RDD File Output
+    rddA.saveAsTextFile("path/to/textfile_output")
+  }
+}
+
+
+
+
+
+
